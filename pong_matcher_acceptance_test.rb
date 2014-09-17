@@ -3,7 +3,7 @@ require "json"
 
 class PongMatcherAcceptance < Minitest::Test
   def setup
-    @host = "http://localhost:3000"
+    @host = ENV.fetch("HOST", "http://localhost:3000")
     Admin.new(@host).clear
   end
 
@@ -107,7 +107,11 @@ class MatchRequest
   end
 
   def call
-    http.put(path, JSON.generate(player: player_id))
+    http.put(path, JSON.generate(player: player_id)).tap do |response|
+      if response.status != 200
+        raise "invalid response received: #{response.status}"
+      end
+    end
   end
 
   def fulfilled?
