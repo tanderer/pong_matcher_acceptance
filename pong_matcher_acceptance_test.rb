@@ -8,38 +8,38 @@ class PongMatcherAcceptance < Minitest::Test
   end
 
   def test_that_lonely_player_cannot_be_matched
-    @williams = Client.new(@host, "williams")
-    match_request = @williams.request_match
+    williams = Client.new(@host, "williams")
+    match_request = williams.request_match
 
     refute match_request.fulfilled?, "a single player shouldn't be matched"
   end
 
   def test_that_two_players_can_be_matched
-    @williams = Client.new(@host, "williams")
-    @sharapova = Client.new(@host, "sharapova")
+    williams = Client.new(@host, "williams")
+    sharapova = Client.new(@host, "sharapova")
 
-    request_1 = @williams.request_match
-    request_2 = @sharapova.request_match
+    request_1 = williams.request_match
+    request_2 = sharapova.request_match
 
     assert request_1.fulfilled?, "williams didn't receive notification of her match!"
     assert request_2.fulfilled?, "sharapova didn't receive notification of her match!"
   end
 
   def test_that_entering_result_ensures_match_with_new_player
-    @williams = Client.new(@host, "williams")
-    @sharapova = Client.new(@host, "sharapova")
-    @navratilova = Client.new(@host, "navratilova")
+    williams = Client.new(@host, "williams")
+    sharapova = Client.new(@host, "sharapova")
+    navratilova = Client.new(@host, "navratilova")
 
     williams_request_id = SecureRandom.uuid
 
-    williams_request = @williams.request_match(match_request_id: williams_request_id)
-    @sharapova.request_match
+    williams_request = williams.request_match(match_request_id: williams_request_id)
+    sharapova.request_match
 
-    @williams.loses_to(@sharapova, match_id: williams_request.match_id)
+    williams.loses_to(sharapova, match_id: williams_request.match_id)
 
-    williams_new_request = @williams.request_match
-    sharapova_new_request = @sharapova.request_match
-    navratilova_request = @navratilova.request_match
+    williams_new_request = williams.request_match
+    sharapova_new_request = sharapova.request_match
+    navratilova_request = navratilova.request_match
 
     assert williams_new_request.fulfilled?,
       "Williams didn't receive notification of her match!"
