@@ -1,6 +1,5 @@
 require "minitest/autorun"
 require "json"
-require "pp"
 
 class PongMatcherAcceptance < Minitest::Test
   def setup
