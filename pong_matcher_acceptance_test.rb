@@ -121,8 +121,8 @@ class MatchRequest
   def call
     self.last_response = http.put(path, JSON.generate(player: player_id))
     if last_response.status != 200
-      raise ["PUT #{path} responded with #{response.status}",
-             response.body].join("\n")
+      raise ["PUT #{path} responded with #{last_response.status}",
+             last_response.body].join("\n")
     end
     last_response
   end
