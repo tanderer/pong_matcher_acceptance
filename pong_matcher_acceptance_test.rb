@@ -21,8 +21,11 @@ class PongMatcherAcceptance < Minitest::Test
     request_1 = williams.request_match
     request_2 = sharapova.request_match
 
-    assert request_1.fulfilled?, "williams didn't receive notification of her match!"
-    assert request_2.fulfilled?, "sharapova didn't receive notification of her match!"
+    assert request_1.fulfilled?,
+      ["Williams didn't receive notification of her match!",
+       request_1.last_response.body].join("\n")
+    assert request_2.fulfilled?,
+      "Sharapova didn't receive notification of her match!"
   end
 
   def test_that_entering_result_ensures_match_with_new_player
@@ -45,7 +48,9 @@ class PongMatcherAcceptance < Minitest::Test
       "Williams didn't receive notification of her match!"
 
     refute sharapova_new_request.fulfilled?,
-      "Sharapova just played Williams! Expected Navratilova to be matched with Williams."
+      ["Sharapova shouldn't have a match, because she just played Williams!",
+       "Expected Navratilova to be matched with Williams.",
+       sharapova_new_request.last_response.body].join("\n")
 
     assert navratilova_request.fulfilled?,
       "Navratilova didn't receive notification of her match!"
@@ -87,10 +92,15 @@ class Client
   private
 
   def enter_result(match_id: nil, winner: nil, loser: nil)
-    if [match_id, winner].any?(&:nil?)
-      raise ArgumentError, "One of match_id: #{match_id}, winner: #{winner} is nil!"
+    nil_arg = {match_id: match_id, winner: winner}.detect { |name, arg| arg.nil? }
+    if nil_arg
+      raise ArgumentError, "#{nil_arg[0]} is nil!"
     else
-      http.post("/results", JSON.generate(match_id: match_id, winner: winner.id, loser: loser.id))
+      response = http.post("/results", JSON.generate(match_id: match_id, winner: winner.id, loser: loser.id))
+      if response.status != 201
+        raise ["POST /results responded with #{response.status}",
+               response.body].join("\n")
+      end
     end
   end
 
@@ -100,6 +110,8 @@ end
 require "securerandom"
 
 class MatchRequest
+  attr_reader :last_response
+
   def initialize(id, http, player_id)
     @id = id
     @http = http
@@ -107,40 +119,46 @@ class MatchRequest
   end
 
   def call
-    http.put(path, JSON.generate(player: player_id)).tap do |response|
-      if response.status != 200
-        raise "invalid response received: #{response.status}"
-      end
+    self.last_response = http.put(path, JSON.generate(player: player_id))
+    if last_response.status != 200
+      raise ["PUT #{path} responded with #{response.status}",
+             response.body].join("\n")
     end
+    last_response
   end
 
   def fulfilled?
-    response = get(path)
-    response.status == 200 && has_match_id?(response)
+    self.last_response = get(path)
+    last_response.status == 200 && has_match_id?(last_response)
   end
 
   def match_id
-    response = get(path)
-    extract(response, "match_id")
+    self.last_response = get(path)
+    extract(last_response, "match_id")
   end
 
   private
 
+  attr_writer :last_response
+
   def get(path)
     http.get(path).tap do |response|
       if response.status >= 400 && response.status != 404
-        raise "invalid response received: #{response.status}"
+        raise ["GET #{path} responded with #{response.status}",
+               response.body].join("\n")
       end
     end
-  end
-
-  def extract(response, attribute)
-    JSON.parse(response.body)[attribute]
   end
 
   def has_match_id?(response)
     match_id = extract(response, "match_id")
     match_id != "" && !match_id.nil?
+  end
+
+  def extract(response, attribute)
+    JSON.parse(response.body)[attribute]
+  rescue JSON::ParserError => e
+    raise "Invalid JSON: #{response.body}\n#{e.message}"
   end
 
   def path
