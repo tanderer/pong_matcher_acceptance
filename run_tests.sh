@@ -1,4 +1,6 @@
 #/bin/bash
 
-bundle
-ruby pong_matcher_acceptance_test.rb
+set -ex
+
+docker build -t andrewbruce/pongrubyacceptance .
+docker run andrewbruce/pongrubyacceptance
