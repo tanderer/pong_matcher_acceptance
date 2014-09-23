@@ -7,4 +7,4 @@ USER    web
 COPY    . pong_matcher_acceptance
 RUN     cd pong_matcher_acceptance; bundle
 
-ENTRYPOINT cd pong_matcher_acceptance; HOST=http://pong.cfapps.io ruby pong_matcher_acceptance_test.rb
+ENTRYPOINT cd pong_matcher_acceptance; ruby pong_matcher_acceptance_test.rb
