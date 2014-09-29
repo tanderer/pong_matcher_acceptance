@@ -1,6 +1,6 @@
 # DOCKER-VERSION 1.2.0
 
-FROM    docker.gocd.cf-app.com:5000/pongbaseruby
+FROM    camelpunch/pong-matcher-base:ruby
 
 # install as unprivileged user
 USER    web

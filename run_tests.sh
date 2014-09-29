@@ -2,5 +2,4 @@
 
 set -ex
 
-docker build -t andrewbruce/pongrubyacceptance .
-docker run -e "HOST=$HOST" andrewbruce/pongrubyacceptance
+docker run -e "HOST=$HOST" camelpunch/pong-matcher-acceptance
