@@ -73,7 +73,9 @@ class Client
   attr_reader :id
 
   def initialize(host, id)
-    @http = Faraday.new(url: host)
+    @http = Faraday.new(url: host,
+                        headers: {"Content-Type" => "application/json",
+                                  "Accept" => "application/json"})
     @id = id
   end
 
