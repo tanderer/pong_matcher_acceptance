@@ -11,7 +11,7 @@ class PongMatcherAcceptance < Minitest::Test
     williams = Client.new(@host, "williams")
     match_request = williams.request_match
 
-    refute match_request.fulfilled?, "a single player shouldn't be matched"
+    refute match_request.match_id, "a single player shouldn't be matched"
   end
 
   def test_that_two_players_can_be_matched
@@ -21,10 +21,10 @@ class PongMatcherAcceptance < Minitest::Test
     request_1 = williams.request_match
     request_2 = sharapova.request_match
 
-    assert request_1.fulfilled?,
+    assert request_1.match_id,
       ["Williams didn't receive notification of her match!",
        request_1.last_response.body].join("\n")
-    assert request_2.fulfilled?,
+    assert request_2.match_id,
       "Sharapova didn't receive notification of her match!"
   end
 
@@ -44,15 +44,15 @@ class PongMatcherAcceptance < Minitest::Test
     sharapova_new_request = sharapova.request_match
     navratilova_request = navratilova.request_match
 
-    assert williams_new_request.fulfilled?,
+    assert williams_new_request.match_id,
       "Williams didn't receive notification of her match!"
 
-    refute sharapova_new_request.fulfilled?,
+    refute sharapova_new_request.match_id,
       ["Sharapova shouldn't have a match, because she just played Williams!",
        "Expected Navratilova to be matched with Williams.",
        sharapova_new_request.last_response.body].join("\n")
 
-    assert navratilova_request.fulfilled?,
+    assert navratilova_request.match_id,
       "Navratilova didn't receive notification of her match!"
   end
 end
@@ -129,9 +129,10 @@ class MatchRequest
     last_response
   end
 
-  def fulfilled?
+  def match_id
     self.last_response = get(path)
-    last_response.status == 200 && has_match_id?(last_response)
+    last_response.status == 200 &&
+      nil_if_blank(extract(response, "match_id"))
   end
 
   def match_id
@@ -143,6 +144,10 @@ class MatchRequest
 
   attr_writer :last_response
 
+  def nil_if_blank(value)
+    value == "" ? nil : value
+  end
+
   def get(path)
     http.get(path).tap do |response|
       if response.status >= 400 && response.status != 404
@@ -150,11 +155,6 @@ class MatchRequest
                response.body].join("\n")
       end
     end
-  end
-
-  def has_match_id?(response)
-    match_id = extract(response, "match_id")
-    match_id != "" && !match_id.nil?
   end
 
   def extract(response, attribute)
