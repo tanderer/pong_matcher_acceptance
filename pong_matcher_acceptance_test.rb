@@ -26,6 +26,11 @@ class PongMatcherAcceptance < Minitest::Test
        request_1.last_response.body].join("\n")
     assert request_2.match_id,
       "Sharapova didn't receive notification of her match!"
+
+    assert_equal request_2.id, request_1.opponent_request_id,
+      "Couldn't retrieve the opponent request ID for williams' request!"
+    assert_equal request_1.id, request_2.opponent_request_id,
+      "Couldn't retrieve the opponent request ID for sharapova's request!"
   end
 
   def test_that_entering_result_ensures_match_with_new_player
@@ -112,7 +117,7 @@ end
 require "securerandom"
 
 class MatchRequest
-  attr_reader :last_response
+  attr_reader :id, :last_response
 
   def initialize(id, http, player_id)
     @id = id
@@ -130,18 +135,31 @@ class MatchRequest
   end
 
   def match_id
-    self.last_response = get(path)
-    last_response.status == 200 &&
-      nil_if_blank(extract(response, "match_id"))
+    @match_id ||=
+      begin
+        self.last_response = get(path)
+        last_response.status == 200 &&
+          nil_if_blank(extract(last_response, "match_id"))
+      end
   end
 
-  def match_id
-    self.last_response = get(path)
-    extract(last_response, "match_id")
+  def opponent_request_id
+    path = "/matches/#{match_id}"
+    match_response = http.get(path)
+
+    if match_response.status == 200
+      JSON.parse(match_response.body).
+        values_at("match_request_1_id", "match_request_2_id").
+        detect {|request_id| request_id != id}
+    else
+      raise ["GET #{path} responded with #{match_response.status}",
+             match_response.body].join("\n")
+    end
   end
 
   private
 
+  attr_reader :http, :player_id
   attr_writer :last_response
 
   def nil_if_blank(value)
@@ -166,6 +184,4 @@ class MatchRequest
   def path
     "/match_requests/#{id}"
   end
-
-  attr_reader :id, :http, :player_id
 end
