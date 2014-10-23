@@ -23,7 +23,7 @@ class PongMatcherAcceptance < Minitest::Test
 
     assert request_1.match_id,
       ["Williams didn't receive notification of her match!",
-       request_1.last_response.body].join("\n")
+       request_1.last_get_response.body].join("\n")
     assert request_2.match_id,
       "Sharapova didn't receive notification of her match!"
 
@@ -55,7 +55,7 @@ class PongMatcherAcceptance < Minitest::Test
     refute sharapova_new_request.match_id,
       ["Sharapova shouldn't have a match, because she just played Williams!",
        "Expected Navratilova to be matched with Williams.",
-       sharapova_new_request.last_response.body].join("\n")
+       sharapova_new_request.last_get_response.body].join("\n")
 
     assert navratilova_request.match_id,
       "Navratilova didn't receive notification of her match!"
@@ -117,7 +117,7 @@ end
 require "securerandom"
 
 class MatchRequest
-  attr_reader :id, :last_response
+  attr_reader :id, :last_put_response, :last_get_response
 
   def initialize(id, http, player_id)
     @id = id
@@ -126,20 +126,20 @@ class MatchRequest
   end
 
   def call
-    self.last_response = http.put(path, JSON.generate(player: player_id))
-    if last_response.status != 200
-      raise ["PUT #{path} responded with #{last_response.status}",
-             last_response.body].join("\n")
+    self.last_put_response = http.put(path, JSON.generate(player: player_id))
+    if last_put_response.status != 200
+      raise ["PUT #{path} responded with #{last_put_response.status}",
+             last_put_response.body].join("\n")
     end
-    last_response
+    last_put_response
   end
 
   def match_id
     @match_id ||=
       begin
-        self.last_response = get(path)
-        last_response.status == 200 &&
-          nil_if_blank(extract(last_response, "match_id"))
+        self.last_get_response = get(path)
+        last_get_response.status == 200 &&
+          nil_if_blank(extract(last_get_response, "match_id"))
       end
   end
 
@@ -160,7 +160,7 @@ class MatchRequest
   private
 
   attr_reader :http, :player_id
-  attr_writer :last_response
+  attr_writer :last_get_response, :last_put_response
 
   def nil_if_blank(value)
     value == "" ? nil : value
