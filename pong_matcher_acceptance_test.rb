@@ -41,7 +41,10 @@ class PongMatcherAcceptance < Minitest::Test
     williams_request_id = SecureRandom.uuid
 
     williams_request = williams.request_match(match_request_id: williams_request_id)
-    sharapova.request_match
+    sharapova_request = sharapova.request_match
+
+    assert_equal sharapova_request.id, williams_request.opponent_request_id
+    assert_equal williams_request.id, sharapova_request.opponent_request_id
 
     williams.loses_to(sharapova, match_id: williams_request.match_id)
 
@@ -49,8 +52,14 @@ class PongMatcherAcceptance < Minitest::Test
     sharapova_new_request = sharapova.request_match
     navratilova_request = navratilova.request_match
 
+    assert_equal sharapova_request.id, williams_request.opponent_request_id
+    assert_equal williams_request.id, sharapova_request.opponent_request_id
+
+    refute_equal sharapova_new_request.id, navratilova_request.opponent_request_id,
+      "Expected Williams to be matched with Navratilova, but Sharapova got Navratilova (ordering issue)"
+
     assert williams_new_request.match_id,
-      "Williams didn't receive notification of her match!"
+      "Williams didn't receive notification of her match! #{williams_new_request.last_get_response.body}"
 
     refute sharapova_new_request.match_id,
       ["Sharapova shouldn't have a match, because she just played Williams!",
