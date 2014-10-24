@@ -52,9 +52,6 @@ class PongMatcherAcceptance < Minitest::Test
     sharapova_new_request = sharapova.request_match
     navratilova_request = navratilova.request_match
 
-    assert_equal sharapova_request.id, williams_request.opponent_request_id
-    assert_equal williams_request.id, sharapova_request.opponent_request_id
-
     refute_equal sharapova_new_request.id, navratilova_request.opponent_request_id,
       "Expected Williams to be matched with Navratilova, but Sharapova got Navratilova (ordering issue)"
 
