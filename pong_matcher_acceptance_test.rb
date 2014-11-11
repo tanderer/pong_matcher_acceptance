@@ -3,191 +3,121 @@ require "json"
 
 class PongMatcherAcceptance < Minitest::Test
   def setup
-    @host = ENV.fetch("HOST", "http://localhost:3000")
-    Admin.new(@host).clear
+    host = ENV.fetch("HOST", "http://localhost:3000")
+    @client = Client.new(host)
+    @client.delete('/all')
   end
 
-  def test_that_lonely_player_cannot_be_matched
-    williams = Client.new(@host, "williams")
-    match_request = williams.request_match
+  attr_reader :client
 
-    refute match_request.match_id, "a single player shouldn't be matched"
+  def test_that_lonely_player_cannot_be_matched
+    put_response = client.put('/match_requests/lonesome', 'player' => 'some-player')
+    assert_equal 200, put_response.status
+
+    get_response = client.get('/match_requests/lonesome')
+    assert_equal 404, get_response.status # TODO 404 is OK for refactor, not for change
   end
 
   def test_that_two_players_can_be_matched
-    williams = Client.new(@host, "williams")
-    sharapova = Client.new(@host, "sharapova")
+    client.put('/match_requests/williams1', 'player' => 'williams')
+    client.put('/match_requests/sharapova1', 'player' => 'sharapova')
 
-    request_1 = williams.request_match
-    request_2 = sharapova.request_match
+    williams_match_id, response_1 = get_match_id('williams1')
+    sharapova_match_id, response_2 = get_match_id('sharapova1')
 
-    assert request_1.match_id,
+    assert williams_match_id,
       ["Williams didn't receive notification of her match!",
-       request_1.last_get_response.body].join("\n")
-    assert request_2.match_id,
-      "Sharapova didn't receive notification of her match!"
+       response_1.body].join("\n")
+    assert sharapova_match_id,
+      ["Sharapova didn't receive notification of her match!",
+       response_2.body].join("\n")
 
-    assert_equal request_2.id, request_1.opponent_request_id,
-      "Couldn't retrieve the opponent request ID for williams' request!"
-    assert_equal request_1.id, request_2.opponent_request_id,
-      "Couldn't retrieve the opponent request ID for sharapova's request!"
+    request_ids = get_match_request_ids(williams_match_id)
+
+    assert_includes request_ids, 'sharapova1',
+      "Couldn't retrieve the opponent request ID for Williams' request!"
+    assert_includes request_ids, 'williams1',
+      "Couldn't retrieve the opponent request ID for Sharapova's request!"
   end
 
   def test_that_entering_result_ensures_match_with_new_player
-    williams = Client.new(@host, "williams")
-    sharapova = Client.new(@host, "sharapova")
-    navratilova = Client.new(@host, "navratilova")
+    client.put('/match_requests/williams1', 'player' => 'williams')
+    client.put('/match_requests/sharapova1', 'player' => 'sharapova')
 
-    williams_request_id = SecureRandom.uuid
+    match_id, _ = get_match_id('williams1')
+    request_ids = get_match_request_ids(match_id)
 
-    williams_request = williams.request_match(match_request_id: williams_request_id)
-    sharapova_request = sharapova.request_match
+    assert_equal %w(williams1 sharapova1).sort, request_ids.sort
 
-    assert_equal sharapova_request.id, williams_request.opponent_request_id
-    assert_equal williams_request.id, sharapova_request.opponent_request_id
+    response = client.post('/results',
+                           'match_id' => match_id,
+                           'winner' => 'sharapova',
+                           'loser' => 'williams')
+    assert_equal 201, response.status
 
-    williams.loses_to(sharapova, match_id: williams_request.match_id)
+    client.put('/match_requests/williams2', 'player' => 'williams')
+    client.put('/match_requests/sharapova2', 'player' => 'sharapova')
+    client.put('/match_requests/navratilova1', 'player' => 'navratilova')
 
-    williams_new_request = williams.request_match
-    sharapova_new_request = sharapova.request_match
-    navratilova_request = navratilova.request_match
+    new_match_id, new_response = get_match_id('williams2')
+    assert new_match_id,
+      "Williams didn't receive notification of her match! #{new_response.body}"
 
-    refute_equal sharapova_new_request.id, navratilova_request.opponent_request_id,
+    request_ids = get_match_request_ids(new_match_id)
+    refute_includes request_ids, 'sharapova2',
       "Expected Williams to be matched with Navratilova, but Sharapova got Navratilova (ordering issue)"
 
-    assert williams_new_request.match_id,
-      "Williams didn't receive notification of her match! #{williams_new_request.last_get_response.body}"
-
-    refute sharapova_new_request.match_id,
+    sharapova_match_id, sharapova_response = get_match_id('sharapova2')
+    refute sharapova_match_id,
       ["Sharapova shouldn't have a match, because she just played Williams!",
        "Expected Navratilova to be matched with Williams.",
-       sharapova_new_request.last_get_response.body].join("\n")
+       request_ids,
+       sharapova_response.body].join("\n")
 
-    assert navratilova_request.match_id,
+    navratilova_match_id, navratilova_response = get_match_id('navratilova1')
+    assert navratilova_match_id,
       "Navratilova didn't receive notification of her match!"
+  end
+
+  def get_match_request_ids(match_id)
+    match = JSON.parse(client.get("/matches/#{match_id}").body)
+    match.values_at('match_request_1_id', 'match_request_2_id')
+  end
+
+  def get_match_id(match_request_id)
+    response = client.get("/match_requests/#{match_request_id}")
+    [JSON.parse(response.body)['match_id'], response]
   end
 end
 
 require "faraday"
 
-class Admin
-  def initialize(host)
-    @http = Faraday.new(url: host)
-  end
-
-  def clear
-    @http.delete("/all")
-  end
-end
-
 class Client
   attr_reader :id
 
-  def initialize(host, id)
+  def initialize(host)
     @http = Faraday.new(url: host,
                         headers: {"Content-Type" => "application/json",
                                   "Accept" => "application/json"})
-    @id = id
   end
 
-  def request_match(match_request_id: SecureRandom.uuid)
-    MatchRequest.new(match_request_id, http, id).tap(&:call)
-  end
-
-  def loses_to(winner, options)
-    enter_result(
-      match_id: options.fetch(:match_id),
-      winner: winner,
-      loser: self
-    )
-  end
-
-  private
-
-  def enter_result(match_id: nil, winner: nil, loser: nil)
-    nil_arg = {match_id: match_id, winner: winner}.detect { |name, arg| arg.nil? }
-    if nil_arg
-      raise ArgumentError, "#{nil_arg[0]} is nil!"
-    else
-      response = http.post("/results", JSON.generate(match_id: match_id, winner: winner.id, loser: loser.id))
-      if response.status != 201
-        raise ["POST /results responded with #{response.status}",
-               response.body].join("\n")
-      end
-    end
-  end
-
-  attr_reader :http
-end
-
-require "securerandom"
-
-class MatchRequest
-  attr_reader :id, :last_put_response, :last_get_response
-
-  def initialize(id, http, player_id)
-    @id = id
-    @http = http
-    @player_id = player_id
-  end
-
-  def call
-    self.last_put_response = http.put(path, JSON.generate(player: player_id))
-    if last_put_response.status != 200
-      raise ["PUT #{path} responded with #{last_put_response.status}",
-             last_put_response.body].join("\n")
-    end
-    last_put_response
-  end
-
-  def match_id
-    @match_id ||=
-      begin
-        self.last_get_response = get(path)
-        last_get_response.status == 200 &&
-          nil_if_blank(extract(last_get_response, "match_id"))
-      end
-  end
-
-  def opponent_request_id
-    path = "/matches/#{match_id}"
-    match_response = http.get(path)
-
-    if match_response.status == 200
-      JSON.parse(match_response.body).
-        values_at("match_request_1_id", "match_request_2_id").
-        detect {|request_id| request_id != id}
-    else
-      raise ["GET #{path} responded with #{match_response.status}",
-             match_response.body].join("\n")
-    end
-  end
-
-  private
-
-  attr_reader :http, :player_id
-  attr_writer :last_get_response, :last_put_response
-
-  def nil_if_blank(value)
-    value == "" ? nil : value
+  def delete(path)
+    http.delete(path)
   end
 
   def get(path)
-    http.get(path).tap do |response|
-      if response.status >= 400 && response.status != 404
-        raise ["GET #{path} responded with #{response.status}",
-               response.body].join("\n")
-      end
-    end
+    http.get(path)
   end
 
-  def extract(response, attribute)
-    JSON.parse(response.body)[attribute]
-  rescue JSON::ParserError => e
-    raise "Invalid JSON: #{response.body}\n#{e.message}"
+  def put(path, body)
+    http.put(path, JSON.generate(body))
   end
 
-  def path
-    "/match_requests/#{id}"
+  def post(path, body)
+    http.post(path, JSON.generate(body))
   end
+
+  private
+
+  attr_reader :http
 end
