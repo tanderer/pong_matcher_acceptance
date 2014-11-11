@@ -10,12 +10,22 @@ class PongMatcherAcceptance < Minitest::Test
 
   attr_reader :client
 
+  def test_that_getting_a_bogus_match_request_404s
+    response = client.get('/match_requests/completelymadeup')
+    assert_equal 404, response.status
+  end
+
   def test_that_lonely_player_cannot_be_matched
     put_response = client.put('/match_requests/lonesome', 'player' => 'some-player')
     assert_equal 200, put_response.status
 
     get_response = client.get('/match_requests/lonesome')
-    assert_equal 404, get_response.status # TODO 404 is OK for refactor, not for change
+    assert_equal 200, get_response.status
+
+    expected_representation = { 'id' => 'lonesome',
+                                'player' => 'some-player',
+                                'match_id' => nil }
+    assert_equal(expected_representation, JSON.parse(get_response.body))
   end
 
   def test_that_two_players_can_be_matched
