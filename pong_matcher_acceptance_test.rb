@@ -10,45 +10,45 @@ class PongMatcherAcceptance < Minitest::Test
 
   attr_reader :client
 
-  # def test_that_getting_a_bogus_match_request_404s
-  #   response = client.get('/match_requests/completelymadeup')
-  #   assert_equal 404, response.status
-  # end
+  def test_that_getting_a_bogus_match_request_404s
+    response = client.get('/match_requests/completelymadeup')
+    assert_equal 404, response.status
+  end
 
-  # def test_that_lonely_player_cannot_be_matched
-  #   put_response = client.put('/match_requests/lonesome', 'player' => 'some-player')
-  #   assert_equal 200, put_response.status
+  def test_that_lonely_player_cannot_be_matched
+    put_response = client.put('/match_requests/lonesome', 'player' => 'some-player')
+    assert_equal 200, put_response.status
 
-  #   get_response = client.get('/match_requests/lonesome')
-  #   assert_equal 200, get_response.status
+    get_response = client.get('/match_requests/lonesome')
+    assert_equal 200, get_response.status
 
-  #   expected_representation = { 'id' => 'lonesome',
-  #                               'player' => 'some-player',
-  #                               'match_id' => nil }
-  #   assert_equal(expected_representation, JSON.parse(get_response.body))
-  # end
+    expected_representation = { 'id' => 'lonesome',
+                                'player' => 'some-player',
+                                'match_id' => nil }
+    assert_equal(expected_representation, JSON.parse(get_response.body))
+  end
 
-  # def test_that_two_players_can_be_matched
-  #   client.put('/match_requests/williams1', 'player' => 'williams')
-  #   client.put('/match_requests/sharapova1', 'player' => 'sharapova')
+  def test_that_two_players_can_be_matched
+    client.put('/match_requests/williams1', 'player' => 'williams')
+    client.put('/match_requests/sharapova1', 'player' => 'sharapova')
 
-  #   williams_match_id, response_1 = get_match_id('williams1')
-  #   sharapova_match_id, response_2 = get_match_id('sharapova1')
+    williams_match_id, response_1 = get_match_id('williams1')
+    sharapova_match_id, response_2 = get_match_id('sharapova1')
 
-  #   assert williams_match_id,
-  #     ["Williams didn't receive notification of her match!",
-  #      response_1.body].join("\n")
-  #   assert sharapova_match_id,
-  #     ["Sharapova didn't receive notification of her match!",
-  #      response_2.body].join("\n")
+    assert williams_match_id,
+      ["Williams didn't receive notification of her match!",
+       response_1.body].join("\n")
+    assert sharapova_match_id,
+      ["Sharapova didn't receive notification of her match!",
+       response_2.body].join("\n")
 
-  #   request_ids = get_match_request_ids(williams_match_id)
+    request_ids = get_match_request_ids(williams_match_id)
 
-  #   assert_includes request_ids, 'sharapova1',
-  #     "Couldn't retrieve the opponent request ID for Williams' request!"
-  #   assert_includes request_ids, 'williams1',
-  #     "Couldn't retrieve the opponent request ID for Sharapova's request!"
-  # end
+    assert_includes request_ids, 'sharapova1',
+      "Couldn't retrieve the opponent request ID for Williams' request!"
+    assert_includes request_ids, 'williams1',
+      "Couldn't retrieve the opponent request ID for Sharapova's request!"
+  end
 
   def test_that_entering_result_ensures_match_with_new_player
     client.put('/match_requests/williams1', 'player' => 'williams')
@@ -96,12 +96,7 @@ class PongMatcherAcceptance < Minitest::Test
 
   def get_match_id(match_request_id)
     response = client.get("/match_requests/#{match_request_id}")
-    match_id = JSON.parse(response.body)['match_id']
-    if match_id
-      [match_id, response]
-    else
-      raise "No match_id when expected from: #{response.body}"
-    end
+    [JSON.parse(response.body)['match_id'], response]
   end
 end
 
