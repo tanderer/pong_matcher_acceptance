@@ -15,6 +15,21 @@ class PongMatcherAcceptance < Minitest::Test
     assert_equal 404, response.status
   end
 
+  def test_that_using_incorrect_methods_404_or_405s
+    acceptable_response_codes = [404, 405]
+    assert_includes acceptable_response_codes, client.get('/all').status,
+      "/all didn't respond appropriately to GET"
+
+    client.put('/match_requests/foo', 'player' => 'someone')
+    assert_includes acceptable_response_codes, client.post('/match_requests/foo', {}).status,
+
+      "/match_requests/foo didn't respond appropriately to POST"
+    assert_includes acceptable_response_codes, client.put('/matches/foo', {}).status,
+      "/matches/foo didn't respond appropriately to PUT"
+    assert_includes acceptable_response_codes, client.get('/results').status,
+      "/results didn't response appropriately to GET"
+  end
+
   def test_that_lonely_player_cannot_be_matched
     put_response = client.put('/match_requests/lonesome', 'player' => 'some-player')
     assert_equal 200, put_response.status
