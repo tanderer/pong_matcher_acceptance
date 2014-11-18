@@ -12,7 +12,7 @@ class PongMatcherAcceptance < Minitest::Test
 
   def test_that_getting_a_bogus_match_request_404s
     response = client.get('/match_requests/completelymadeup')
-    assert_equal 404, response.status
+    assert_equal 404, response.status, "Response:\n\n#{response.body}"
   end
 
   def test_that_using_incorrect_methods_404_or_405s
