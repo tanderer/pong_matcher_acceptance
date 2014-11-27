@@ -15,6 +15,11 @@ class PongMatcherAcceptance < Minitest::Test
     assert_equal 404, response.status, "Response:\n\n#{response.body}"
   end
 
+  def test_that_getting_a_bogus_match_404s
+    response = client.get('/matches/completelymadeup')
+    assert_equal 404, response.status, "Response:\n\n#{response.body}"
+  end
+
   def test_that_using_incorrect_methods_404_or_405s
     acceptable_response_codes = [404, 405]
     assert_includes acceptable_response_codes, client.get('/all').status,
@@ -69,7 +74,9 @@ class PongMatcherAcceptance < Minitest::Test
     client.put('/match_requests/williams1', 'player' => 'williams')
     client.put('/match_requests/sharapova1', 'player' => 'sharapova')
 
-    match_id, _ = get_match_id('williams1')
+    match_id, new_response = get_match_id('williams1')
+    assert match_id,
+      "Williams didn't receive notification of her match! #{new_response.body}"
     request_ids = get_match_request_ids(match_id)
 
     assert_equal %w(williams1 sharapova1).sort, request_ids.sort
