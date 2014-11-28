@@ -121,6 +121,8 @@ class PongMatcherAcceptance < Minitest::Test
   def get_match_id(match_request_id)
     response = client.get("/match_requests/#{match_request_id}")
     [JSON.parse(response.body)['match_id'], response]
+  rescue JSON::ParserError => e
+    raise "Response body: #{response.body}\n\nError: #{e.message}"
   end
 end
 
