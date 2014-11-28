@@ -112,7 +112,9 @@ class PongMatcherAcceptance < Minitest::Test
   end
 
   def get_match_request_ids(match_id)
-    match = JSON.parse(client.get("/matches/#{match_id}").body)
+    response = client.get("/matches/#{match_id}")
+    assert_equal 200, response.status, "Got #{response.status} from /matches/#{match_id}.\nBody: #{response.body}"
+    match = JSON.parse(response.body)
     match.values_at('match_request_1_id', 'match_request_2_id')
   end
 
