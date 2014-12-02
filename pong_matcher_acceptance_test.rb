@@ -26,11 +26,14 @@ class PongMatcherAcceptance < Minitest::Test
       "/all didn't respond appropriately to GET"
 
     client.put('/match_requests/foo', 'player' => 'someone')
-    assert_includes acceptable_response_codes, client.post('/match_requests/foo', {}).status,
+    response = client.post('/match_requests/foo', {})
+    assert_includes acceptable_response_codes, response.status,
+      "POST /match_requests/foo responded with #{response.status}, expected 404 or 405.\n" +
+      "#{response.body}"
 
-      "/match_requests/foo didn't respond appropriately to POST"
     assert_includes acceptable_response_codes, client.put('/matches/foo', {}).status,
       "/matches/foo didn't respond appropriately to PUT"
+
     assert_includes acceptable_response_codes, client.get('/results').status,
       "/results didn't response appropriately to GET"
   end
