@@ -40,7 +40,8 @@ class PongMatcherAcceptance < Minitest::Test
 
   def test_that_lonely_player_cannot_be_matched
     put_response = client.put('/match_requests/lonesome', 'player' => 'some-player')
-    assert_equal 200, put_response.status
+    acceptable_response_codes = [200, 204]
+    assert_includes acceptable_response_codes, put_response.status
 
     get_response = client.get('/match_requests/lonesome')
     assert_equal 200, get_response.status
