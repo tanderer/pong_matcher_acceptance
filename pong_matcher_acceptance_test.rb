@@ -41,15 +41,16 @@ class PongMatcherAcceptance < Minitest::Test
   def test_that_lonely_player_cannot_be_matched
     put_response = client.put('/match_requests/lonesome', 'player' => 'some-player')
     acceptable_response_codes = [200, 204]
-    assert_includes acceptable_response_codes, put_response.status
+    assert_includes acceptable_response_codes, put_response.status, put_response.body
 
     get_response = client.get('/match_requests/lonesome')
-    assert_equal 200, get_response.status
+    assert_equal 200, get_response.status, get_response.body
 
     expected_representation = { 'id' => 'lonesome',
                                 'player' => 'some-player',
                                 'match_id' => nil }
-    assert_equal(expected_representation, JSON.parse(get_response.body))
+    assert_equal(expected_representation, JSON.parse(get_response.body),
+                 get_response.body)
   end
 
   def test_that_two_players_can_be_matched
