@@ -58,7 +58,7 @@ class PongMatcherAcceptance < Minitest::Test
   def test_that_two_players_can_be_matched
     client.put('/match_requests/williams1', 'player' => 'williams')
     response = client.put('/match_requests/sharapova1', 'player' => 'sharapova')
-    assert_equal 200, response.status, response.body
+    assert_includes [200, 204], response.status, response.body
 
     williams_match_id, response_1 = get_match_id('williams1')
     sharapova_match_id, response_2 = get_match_id('sharapova1')
