@@ -22,8 +22,9 @@ class PongMatcherAcceptance < Minitest::Test
 
   def test_that_using_incorrect_methods_404_or_405s
     acceptable_response_codes = [404, 405]
-    assert_includes acceptable_response_codes, client.get('/all').status,
-      "/all didn't respond appropriately to GET"
+    response = client.get('/all')
+    assert_includes acceptable_response_codes, response.status,
+      "/all didn't respond appropriately to GET\n#{response.body}"
 
     client.put('/match_requests/foo', 'player' => 'someone')
     response = client.post('/match_requests/foo', {})
@@ -31,8 +32,9 @@ class PongMatcherAcceptance < Minitest::Test
       "POST /match_requests/foo responded with #{response.status}, expected 404 or 405.\n" +
       "#{response.body}"
 
-    assert_includes acceptable_response_codes, client.put('/matches/foo', {}).status,
-      "/matches/foo didn't respond appropriately to PUT"
+    response = client.put('/matches/foo', {})
+    assert_includes acceptable_response_codes, response.status,
+      "/matches/foo didn't respond appropriately to PUT\n#{response.body}"
 
     assert_includes acceptable_response_codes, client.get('/results').status,
       "/results didn't response appropriately to GET"
@@ -55,7 +57,8 @@ class PongMatcherAcceptance < Minitest::Test
 
   def test_that_two_players_can_be_matched
     client.put('/match_requests/williams1', 'player' => 'williams')
-    client.put('/match_requests/sharapova1', 'player' => 'sharapova')
+    response = client.put('/match_requests/sharapova1', 'player' => 'sharapova')
+    assert_equal 200, response.status, response.body
 
     williams_match_id, response_1 = get_match_id('williams1')
     sharapova_match_id, response_2 = get_match_id('sharapova1')
